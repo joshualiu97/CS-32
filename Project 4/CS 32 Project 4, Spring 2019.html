@@ -1,0 +1,756 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0065)http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/spec.html -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+ <title>CS 32 Project 4, Spring 2019</title>
+</head>
+<body>
+<div align="right">
+Spring 2019 CS 32
+</div>
+<div align="center">
+<h2>Project 4<br>
+Compression Obsession</h2>
+<p>
+<strong>Time due: 11:00 PM Thursday, June 6</strong>
+</p>
+</div>
+<h3>Introduction</h3>
+<p>
+</p><p>Small-Mart, one of the world's largest retailers, wants to hire you to
+help them manage their inventory.  A centralized file contains information
+about every item Small-Mart sells.  This file is updated each day.  All
+around the world, there are devices that need to receive a copy of the
+file each day:  computers and cash registers in the stores, vending
+machines, handheld devices, etc., so each day, Small-Mart sends a copy of
+the inventory file to all these devices.  There are 10 million such
+devices, and the inventory file is about 100 kilobytes long, so about 1
+terabyte (i.e., 1000 gigabytes = 100KB * 10 million) is sent each day. 
+Given that their internet provider charges Small-Mart roughly $1 per
+gigabyte, it costs about $1,000 per day to provide up-to-date inventory
+information to the devices.  In addition to the inventory files,
+Small-Mart occasionally sends updates of other files to the devices as
+well (for example, new versions of applications as they are updated).
+</p><p>
+Marty Small, one of Small-Mart's smartest managers (and no relation to the
+company founder), recently had an idea.  He realized that the file that
+Small-Mart sends each day changes very little from the file it sent the
+day before.  For example, consider these two sample inventory files sent by
+Small-Mart to the devices on April 10 and April 11.  Each file contains
+multiple records; each record has an item number, an item name, and the
+number of those items in the inventory:
+</p><p>
+April 10 version of the inventory file:
+</p><p>
+81609,Feather Duster,198,92246,Lawn Chair Set,50,03854,Carrano C++ book,183,27408,Monsters, Inc. DVD,89
+</p><p>
+April 11 version of the inventory file:
+</p><p>
+66284,Screwdriver,1000,81609,Feather Duster,195,92246,Lawn Chair Set,50,03490,Bedspread,87,27408,Monsters, Inc. DVD,89,40411,Hair Spray,380
+</p><p>
+As you can see, both the earlier and later version of the inventory file
+have many similarities. There are some new additions in the April 11
+version of the file, such as the entry
+</p><p>
+03490,Bedspread,87
+</p><p>
+There are also some changes to existing records between the two versions:
+</p><p>
+81609,Feather Duster,198
+</p><p>
+changes to
+</p><p>
+81609,Feather Duster,195
+</p><p>
+And some of the entries in the original file have been removed (e.g., it
+looks like Small-Mart sold all of the Carrano C++ books in one day, since
+there is no entry for it in the second file).
+</p><p>
+Given the significant similarities between successive versions of the
+inventory file, Marty realized he could save Small-Mart hundreds of
+dollars every day.  How?  Marty realized that since a given day's
+inventory file is so similar to the previous day's inventory file, that
+it doesn't make sense to ship the entire 100K inventory file to each
+salesperson every day.  Instead, Small-Mart could just send a smaller file
+containing the list of changes (called a <em>diff file</em>) to each device
+to indicate what has changed from yesterday's inventory file to today's
+file.  Each device could then run an <em>incremental update</em> program
+to use this diff file to convert their existing copy of the inventory
+file to the new version of the inventory file.
+</p><p>
+Let's number each character in both of inventory files and then see an
+example.
+</p><p>
+April 10 version of the inventory file:
+</p>
+<pre>              1         2         3         4
+    01234567890123456789012345678901234567890123456789
+  0 81609,Feather Duster,198,92246,Lawn Chair Set,50,0
+ 50 3854,Carrano C++ book,183,27408,Monsters, Inc. DVD
+100 ,89
+</pre>
+<p>
+April 11 version of the inventory file:
+</p>
+<pre>              1         2         3         4
+    01234567890123456789012345678901234567890123456789
+  0 66284,Screwdriver,1000,81609,Feather Duster,195,92
+ 50 246,Lawn Chair Set,50,03490,Bedspread,87,27408,Mon
+100 sters, Inc. DVD,89,40411,Hair Spray,380
+</pre>
+<p>
+Given these two versions of the inventory file, let's see
+what a diff file might look like.  Remember, the diff file contains a
+set of instructions on how to convert an older version of the file (e.g., the
+April 10 version of the file) into a newer version of the file (e.g., the
+April 11 version).  This diff file would normally be created at Small-Mart
+headquarters and then sent to each of the 10 million devices, which already
+have the full April 10 version of the inventory file:
+</p>
+<ol>
+ <li>Create a new, empty output file</li>
+ <li>Add 23 characters to the newer file: <code>66284,Screwdriver,1000,</code></li>
+ <li>Copy 23 characters from offset 0 in the older file to the
+     newer file.</li>
+ <li>Add 1 character to the newer file: <code>5</code></li>
+ <li>Copy 27 characters from offset 24 in the older file to the
+     newer file.</li>
+ <li>Add 16 characters to the newer file: <code>490,Bedspread,87</code></li>
+ <li>Copy 28 characters from offset 75 in the older file to the
+     newer file.</li>
+ <li>Add 21 characters to the newer file: <code>,40411,Hair Spray,380</code></li>
+</ol>
+<p>
+Given this set of instructions, an incremental update program on a device
+could follow the above set of instructions and convert their April 10 version
+of the file (which is already on their computer) into the April 11 version of
+the file. How would this work?
+</p><p>
+After following the first instruction, the incremental update program
+would create a new empty file.
+</p><p>
+After following the second instruction, that newer file would contain
+</p>
+<pre>66284,Screwdriver,1000,
+</pre>
+<p>
+After following the third instruction, the newer file would contain
+</p>
+<pre>66284,Screwdriver,1000,81609,Feather Duster,19
+</pre>
+<p>
+After following the fourth instruction, the newer file would contain
+</p>
+<pre>66284,Screwdriver,1000,81609,Feather Duster,195
+</pre>
+<p>
+After following the fifth instruction, the newer file would contain
+</p>
+<pre>66284,Screwdriver,1000,81609,Feather Duster,195,92246,Lawn Chair Set,50,03
+</pre>
+<p>
+And so on.
+</p><p>
+To perform this conversion, only two different instructions are required: a
+Copy instruction and an Add instruction.  The Copy instruction specifies that a
+certain number of characters should be copied from a particular offset in the
+older version file to the end of the newer file.  The Add instruction is used
+to add entirely new content to the newer file when this content cannot be
+located and copied from the older file.
+</p><p>
+Of course, the eight diff instructions shown above are in a
+human-readable format that is quite wordy.  We can make our diff file
+much smaller by removing all of the human-readable text and using a more
+compact encoding.  Shown below is a 93-character diff file containing all
+of the instructions above; note that this diff file is 33% smaller than
+the full April 11 version of the file:
+</p>
+<pre>A23:66284,Screwdriver,1000,C23,0A1:5C27,24A16:490,Bedspread,87C28,75A21:,40411,Hair Spray,380
+</pre>
+<p>
+In the example above, each add instruction is represented by an <code>A</code>,
+followed by the number of characters to add, followed by a colon character
+and the actual characters to append.  Each copy instruction is represented by
+a <code>C</code> followed by the number of characters to copy, a comma, and the
+offset in the original file from which to start copying the characters. 
+It is possible to convert any file to any other file using just these two types of instructions.
+</p><p>
+So to recap, each day, in its corporate office, Small-Mart can create the
+latest version of the full inventory file (e.g., the April 11 version).  Then,
+Small-Mart can use a special tool called a <em>diff creator</em> to
+create a diff file (made up of Add and Copy instructions) that contains
+the instructions for converting yesterday's version (the April 10 version)
+of the file to today's version (the April 11 version) of the file.  Then,
+Small-Mart can send this diff file to the 10 million devices instead of
+sending the full (much larger) April 11 inventory file.
+</p><p>Upon receiving the diff file, each of the 10 million devices then runs
+a program called an <em>incremental updater</em> that takes yesterday's
+full April 10 inventory file (which is already on the device, produced
+yesterday) and the just-received diff file, and follows the instructions
+in the diff file to create today's April 11 full inventory file.  On April 12,
+the device will receive a diff file that it will use along with this full
+April 11 file to produce a full April 12 inventory file.  Since the diff
+files are just a fraction of the full inventory files' sizes, this saves
+Small-Mart considerable networking costs.
+</p><p>
+Of course, this diff approach can be used to update all types of files,
+not just inventory files. For instance, consider the following two files A
+and A', where A' is a derived version of A.
+</p>
+<pre>              1         2         3   
+    01234567890123456789012345678901234
+A : ABCDEFGHIJBLAHPQRSTUVPQRSTUV
+A': XYABCDEFGHIJBLETCHPQRSTUVPQRSTQQELF
+</pre>
+<p>
+Here's a diff file to convert A into A'.  Verify for yourself that it works:
+</p>
+<pre>A2:XY<font color="A00000">C12,0</font>A3:ETC<font color="A00000">C13,13</font>A5:QQELF
+</pre>
+<p>
+Now it may not be obvious, but there are actually many possible correct
+diff files that can be created to convert a first version of a file A
+into a second version A'.  For example, here's another correct diff
+file for the example above:
+</p>
+<pre>A3:XYA<font color="A00000">C9,1</font>A6:BLETCH<font color="A00000">C12,14</font>A5:QQELF
+</pre>
+<p>
+And here's another correct, but not very useful, diff file:
+</p>
+<pre>A35:XYABCDEFGHIJBLETCHPQRSTUVPQRSTQQELF
+</pre>
+<p>
+This diff file simply contains the entire contents of A' and instructs
+the incremental updater to write all 35 characters of this data out to the
+output file.  It's a bad solution because it's actually larger in size
+than A'!  It would be a little cheaper to just send A' instead of this
+diff file.
+</p>
+<h3>Your Assignment</h3>
+<p>
+You have been hired by the Chief Frugality Officer (CFO) of Small-Mart
+to create two functions:
+</p>
+<ul>
+<li>
+<code>createDiff</code>:  This function takes the contents of two files,
+A and A', and produces a diff file containing instructions for converting A
+into A'.  Each day, Small-Mart will use this function at their corporate
+headquarters to create a new diff file that they will then send
+to all the devices.
+</li><li>
+<code>applyDiff</code>:  This function takes the content of a file A and
+a diff file, and will apply the instructions in the diff file to produce
+a new file A'.  Each day, every device will use this function to update
+the previous day's inventory file.
+</li>
+</ul>
+<p>
+The <code>createDiff</code> function has the following interface:
+</p>
+<pre>	void createDiff(istream&amp; fold, istream&amp; fnew, ostream&amp; fdiff);
+</pre>
+<p>
+You may name the parameters something else, but there must be three
+parameters of the indicated types in the indicated order. (The
+<a href="http://web.cs.ucla.edu/classes/spring19/cs32/fileio.html">File I/O</a> tutorial explains <code>istream</code>
+and <code>ostream</code>.) The parameters are
+</p>
+<ul>
+<li>an already-opened input source (for yesterday's full file, say)</li>
+<li>an already-opened input source (for today's full file, say)</li>
+<li>an already-opened output destination to which you will write the
+instructions for converting the first input to the second.<p></p>
+</li></ul>
+<p>
+The <code>applyDiff</code> function has the following interface:
+</p>
+<pre>	bool applyDiff(istream&amp; fold, istream&amp; fdiff, ostream&amp; fnew);
+</pre>
+<p>
+You may name the parameters something else, but there must be three
+parameters of the indicated types in the indicated order.  The parameters are
+</p>
+<ul>
+<li>an already-opened input source (for yesterday's full file, say)</li>
+<li>an already-opened input source (the diff file)</li>
+<li>an already-opened output destination to which you will write the
+file resulting from applying the diff file to the first input.<p></p>
+</li></ul>
+<p>
+The <code>applyDiff</code>function returns true if the operation succeeds.
+If it fails because the diff file is malformed (e.g., there's a character
+other than an <code>A</code> or <code>C</code> where an instruction is
+expected, or an offset or length is invalid), the function returns false. 
+If the function returns false, the caller can make no assumption about
+what may or may not have been written to the output destination (so you're
+free to, for example, just return false as soon as you detect an error,
+without regard to what you may have already written).
+</p><p>
+Except for the output required to be written to its third parameter, each of
+the two required functions must not cause anything to be written to
+<code>cout</code> or any file.  They may write to <code>cerr</code>
+anything they want (presumably for debugging purposes); our testing
+program will ignore anything you write to <code>cerr</code>.
+</p><p>
+Your functions must be able to create diff files and apply diff files for
+files up to 100 kilobytes (102,400 bytes) in length, and if you wish, may
+be able to handle longer files as well.
+</p>
+<p style="margin-bottom: 0;">
+The diff file that your implementation of <code>createDiff</code> produces
+must be in this format:  A diff file is a sequence of zero or more
+<em>instruction</em>s, where an <em>instruction</em> is either
+</p><ul style="margin-top: 0; margin-bottom:0;">
+<li>
+an <em>Add instruction</em> of the form
+<code>A<em>len</em>:<em>text</em></code>
+in which <em>len</em> is a sequence of one or more digits representing the
+number of characters to add, and <em>text</em> is a character sequence of
+length <em>len</em>, the text to add; or
+</li><li>
+a <em>Copy instruction</em> of the form
+<code>C<em>len</em>,<em>offset</em></code> in which <em>len</em> is a
+sequence of one or more digits representing the number of characters to
+copy, and <em>offset</em> is a sequence of one or more digits representing
+the (zero-based) offset in the original file from which to start copying.
+</li><li>
+a <em>Do-nothing instruction</em> consisting of either a single newline
+character (<code>'\n'</code>) or a single carriage return character
+(<code>'\r'</code>).
+</li>
+</ul>
+An instruction with a <em>len</em> of 0 (such as <code>A0:</code> or,
+for an old file with at least 13 characters, <code>C0,12</code>) is valid
+and successful when executed by <code>applyDiff</code>, even though it has
+no effect since no characters are to be added or copied.  Of course, it
+would be foolish for <code>createDiff</code> to produce such an
+instruction, since it needlessly makes the diff file longer.  If a copy
+instruction specifies a length of 0 and an offset beyond the last
+character in the old file (e.g., <code>C0,12</code> for an old file with
+12 or fewer characters), you may either consider it valid (and have it do
+nothing) or you may consider it invalid (and have <code>applyDiff</code>
+return false), your choice.  Notice that an instruction like
+<code>A005:Hello</code> is valid (and has the same effect as
+<code>A5:Hello</code>).
+<p></p><p>
+The Do-nothing instructions exist solely to make working with diff files
+easier if you create or examine them under Windows or macOS or Linux, whose
+text editors may or may not append a newline or carriage return-linefeed at
+the end of the file.  To execute a Do-nothing instruction,
+<code>applyDiff</code> does nothing.  For example, a five-character diff file
+containing <code>C6,3•</code> (where • represents a newline
+character) causes the same effect that a four-character diff file
+containing <code>C6,3</code> would.  Of course, it would be foolish for
+<code>createDiff</code> to produce a Do-nothing instruction, since it
+needlessly makes the diff file longer.
+</p><p>
+Your program must build and run successfully under g32 and either Visual C++
+or Xcode.
+</p><p>
+When run under g32fast, your <code>createDiff</code> function must not run
+for longer than 15 seconds for any file of up to 100 kilobytes.  Your
+<code>applyDiff</code> function must not run for longer than 5 seconds for
+any file of up to 100 kilobytes.
+</p><p>
+Here's an example of a main routine that performs a test of the functions,
+checking that the diff file produced by <code>createDiff</code> from an older
+file and a newer file can be used by <code>applyDiff</code> with the older
+file to produce a file identical to the newer file.
+</p>
+<pre>	#include &lt;iostream&gt;
+	#include &lt;fstream&gt;
+	#include &lt;string&gt;
+	#include &lt;algorithm&gt;
+	#include &lt;iterator&gt;
+	#include &lt;cassert&gt;
+	using namespace std;
+
+	bool runtest(string oldName, string newName, string diffName, string newName2)
+	{
+	    if (diffName == oldName  ||  diffName == newName  ||
+	        newName2 == oldName  ||  newName2 == diffName  ||
+                newName2 == newName)
+	    {
+		cerr &lt;&lt; "Files used for output must have names distinct from other files" &lt;&lt; endl;
+		return false;
+	    }
+	    ifstream oldFile(oldName, ios::binary);
+	    if (!oldFile)
+	    {
+	        cerr &lt;&lt; "Cannot open " &lt;&lt; oldName &lt;&lt; endl;
+	        return false;
+	    }
+	    ifstream newFile(newName, ios::binary);
+	    if (!newFile)
+	    {
+	        cerr &lt;&lt; "Cannot open " &lt;&lt; newName &lt;&lt; endl;
+	        return false;
+	    }
+	    ofstream diffFile(diffName, ios::binary);
+	    if (!diffFile)
+	    {
+	        cerr &lt;&lt; "Cannot create " &lt;&lt; diffName &lt;&lt; endl;
+	        return false;
+	    }
+	    createDiff(oldFile, newFile, diffFile);
+	    diffFile.close();
+
+	    oldFile.clear();   // clear the end of file condition
+	    oldFile.seekg(0);  // reset back to beginning of the file
+	    ifstream diffFile2(diffName, ios::binary);
+	    if (!diffFile2)
+	    {
+	        cerr &lt;&lt; "Cannot read the " &lt;&lt; diffName &lt;&lt; " that was just created!" &lt;&lt; endl;
+	        return false;
+	    }
+	    ofstream newFile2(newName2, ios::binary);
+	    if (!newFile2)
+	    {
+	        cerr &lt;&lt; "Cannot create " &lt;&lt; newName2 &lt;&lt; endl;
+	        return false;
+	    }
+	    assert(applyDiff(oldFile, diffFile2, newFile2));
+	    newFile2.close();
+
+	    newFile.clear();
+	    newFile.seekg(0);
+	    ifstream newFile3(newName2, ios::binary);
+	    if (!newFile)
+	    {
+	        cerr &lt;&lt; "Cannot open " &lt;&lt; newName2 &lt;&lt; endl;
+	        return false;
+	    }
+	    if ( ! equal(istreambuf_iterator&lt;char&gt;(newFile), istreambuf_iterator&lt;char&gt;(), 
+	                 istreambuf_iterator&lt;char&gt;(newFile3), istreambuf_iterator&lt;char&gt;()))
+	    {
+		
+	        cerr &lt;&lt; newName2 &lt;&lt; " is not identical to " &lt;&lt; newName
+                     &lt;&lt; "; test FAILED" &lt;&lt; endl;
+	        return false;
+	    }
+	    return true;
+	}
+
+	int main()
+	{
+	    assert(runtest("myoldfile.txt", "mynewfile.txt", "mydifffile.txt", "mynewfile2.txt"));
+	    cerr &lt;&lt; "Test PASSED" &lt;&lt; endl;
+	}
+</pre>
+<p>
+(Note:  We create the streams in binary mode (<code>ios::binary</code>), which
+is harmless under macOS and Linux, but necessary under Windows to make the
+offsets work correctly, since Windows represents line ends for text files
+with two characters even though it delivers just one newline character to
+and from your C++ program.)
+</p><p>
+(Note:  We close the output streams to ensure that all output to the file
+is completed before we open it for input.  Because <code>createDiff</code>
+reached the end of file on the <code>oldFile</code> input stream, we need
+to clear the end of file condition on the stream and reset the stream so
+that we read from the beginning again.  We do the same for
+<code>newFile2</code> before comparing the files.)
+</p><p>
+Here's another main routine that tests the functions.  It uses the types
+<code>istringstream</code> (an input source where the characters read come
+from a string instead of a file), and <code>ostringstream</code> (an output
+destination where the characters written are later available as a string).
+</p>
+<pre>	#include &lt;iostream&gt;
+	#include &lt;sstream&gt;  // for istringstream and ostringstream
+	#include &lt;string&gt;
+	#include &lt;cassert&gt;
+	using namespace std;
+
+	void runtest(string oldtext, string newtext)
+	{
+	    istringstream oldFile(oldtext);
+	    istringstream newFile(newtext);
+	    ostringstream diffFile;
+	    createDiff(oldFile, newFile, diffFile);
+	    string result = diffFile.str();
+	    cout &lt;&lt; "The diff file length is " &lt;&lt; result.size()
+	         &lt;&lt; " and its text is " &lt;&lt; endl;
+	    cout &lt;&lt; result &lt;&lt; endl;
+
+	    oldFile.clear();   // clear the end of file condition
+	    oldFile.seekg(0);  // reset back to beginning of the stream
+	    istringstream diffFile2(result);
+	    ostringstream newFile2;
+	    assert(applyDiff(oldFile, diffFile2, newFile2));
+	    assert(newtext == newFile2.str());
+	}
+
+	int main()
+	{
+	    runtest("There's a bathroom on the right.",
+		    "There's a bad moon on the rise.");
+	    runtest("ABCDEFGHIJBLAHPQRSTUVPQRSTUV",
+	            "XYABCDEFGHIJBLETCHPQRSTUVPQRSTQQELF");
+	    cout &lt;&lt; "All tests passed" &lt;&lt; endl;
+	}
+</pre>
+<p>
+Neither of the main routines above check that the diff file is validly
+formatted.  You can run <a href="http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/checkdiff.exe">this Windows program</a> or
+<a href="http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/checkdiffmac.zip">this Mac program</a> or
+<a href="http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/checkdiff.linux">this Linux program</a> to see if a diff file is
+validly formatted.
+</p>
+<p>
+We will provide you with several different old and new files for you to test
+your program with, in a <a href="http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/Data/p4testwindows.zip">Windows version</a>
+and a <a href="http://web.cs.ucla.edu/classes/spring19/cs32/Projects/4/Data/p4test.zip">Mac and Linux version</a>.  For each of pair
+of old and new files, your program <b><i>must</i></b> create diff files
+that are <i>at least 5% smaller</i> than the new version of the file.  We
+will test your program on other files as well, so it can't work
+<i>just</i> for these sample files.  Below we show how big <i>our</i>
+solution's diff file is for each of these sample pairs of files:
+</p>
+<div style="text-align: center">
+<table border="0" cellpadding="3" width="90%" align="center">
+<colgroup span="1" width="22%" align="left"></colgroup>
+<colgroup span="3" width="13%" align="center"></colgroup>
+<colgroup span="3" width="13%" align="center"></colgroup>
+<tbody><tr>
+<td>&nbsp;</td>
+<td colspan="3" align="center">Windows file sizes in bytes</td>
+<td colspan="3" align="center">Mac and Linux file sizes in bytes</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td>old</td>
+<td>new</td>
+<td>our diff file</td>
+<td>old</td>
+<td>new</td>
+<td>our diff file</td>
+</tr>
+<tr>
+<td>Small-Mart inventory</td>
+<td>105</td>
+<td>141</td>
+<td>95</td>
+<td>104</td>
+<td>140</td>
+<td>94</td>
+</tr><tr>
+<td>Weird Al's Dr. Seuss</td>
+<td>533</td>
+<td>606</td>
+<td>69</td>
+<td>510</td>
+<td>579</td>
+<td>69</td>
+</tr><tr>
+<td>War and Peace</td>
+<td>77285</td>
+<td>77333</td>
+<td>399</td>
+<td>76634</td>
+<td>76682</td>
+<td>393</td>
+</tr><tr>
+<td>Some strange files</td>
+<td>100764</td>
+<td>100764</td>
+<td>8746</td>
+<td>100440</td>
+<td>100440</td>
+<td>8746</td>
+</tr>
+</tbody></table>
+</div>
+<h3>Algorithm Requirements</h3>
+<p>
+You may be wondering how to write a function to create a diff file.  This is
+definitely a non-trivial problem, and most senior job interview candidates
+can't come up with a viable algorithm (i.e., a conceptual approach) within
+a one-hour interview.
+</p>
+<p>
+Here's a general, high-level algorithm that can be used to
+build a diff file.  It's not ideal, however, and you'll have to come up with
+improvements of your own to make it work well:
+</p>
+<ol>
+<li>
+Read in the entire contents of the old file into a string.  Read the
+entire contents of the new file into another string.
+</li><li>
+For all consecutive N-character sequences in the old file's string, insert
+that N-character sequence <i>and</i> the offset F where it was found in
+the old file's string, into a table (e.g. hash table or binary search tree).
+You might use 8 for N, or maybe 16.
+</li><li>
+Once you have filled up your table with all N-byte sequences from the
+source file, start processing the new file's string, starting from offset j=0,
+until j reaches the end of the string.
+<ol type="a">
+<li>
+Look up the N-byte sequence which starts at offset j ([j,j+N-1]) in the new
+file's string in the table you created from the old file's string.
+</li><li>
+If you find this sequence in the table, you know that that sequence is
+present in both the old and new versions of the file.
+<ol type="i">
+<li>
+Determine how long the match goes on (it might be just N bytes long,
+or it might extend past the first N matching bytes to be many bytes longer).
+</li><li>
+Once you have determined how long the match is (call this L), write a
+Copy instruction to the diff file to copy L bytes from offset F from
+the source file.
+</li><li>
+Go back to step 3a, continuing at offset j = j + L in the new file's string.
+</li>
+</ol>
+</li><li>
+If you don't find the current sequence (new file's string [j,j+N-1]) in the
+table you created, you know that the first version of the file doesn't
+contain the current N byte sequence.
+</li>
+<ol type="i">
+<li>
+Write an instruction to the diff file to Add the current character.
+</li><li>
+Increment j by one to continue past the character used in the add instruction.
+</li><li>
+Go back to step 3a, where we'll try to find the next N-byte sequence in
+our table.
+</li>
+</ol>
+
+</ol>
+</li>
+</ol>
+<p>
+Of course, this is a simple version of the algorithm, and many
+improvements are possible.  For example, this version of the algorithm
+will result in only single-character add instructions:  If the new file
+contains the new text <code>BLAH</code> (not present in the old text),
+then the above algorithm would produce four Add instructions
+(<code>A1:BA1:LA1:AA1:H</code>) instead of a single (and more compact) Add
+instruction that adds all four new characters at once (<code>A4:BLAH</code>).
+</p><p>
+To obtain the highest score possible and create the smallest
+diff files, you'll have to improve on the algorithm substantially. Be
+creative!  In addition, this naïve algorithm also has troubles with
+certain types of files (such as the strange*.txt sample files that we
+provide).  You'll have to figure out why and make sure this doesn't cause
+problems in your solution.
+</p><p>
+For this project, we are constraining your implementation:
+</p>
+<ul>
+<li>
+You are required to use either a hash table or a binary search tree (your
+choice of which) for your table data structure.
+</li><li>
+The only containers from the C++ standard library you may use are
+<code>vector</code>, <code>list</code>, <code>stack</code>, and
+<code>queue</code> (and <code>string</code>).  You'll thus have to implement
+your BST or hash table yourself instead of using a <code>map</code> or
+<code>unordered_map</code>, but you can, say, use the <code>list</code> 
+type to help you implement a hash table.  Although we're limiting
+your use of <em>containers</em> from the library, you are free to use
+library <em>algorithms</em> (e.g., <code>sort</code>).  You are also free
+to use <code>std::pair</code> from <code>&lt;utility&gt;</code> and
+<code>std::hash</code> from <code>&lt;functional&gt;</code> if you wish.
+</li>
+</ul>
+<p>
+Compared to creating a diff file, the algorithm for applying a diff file
+is much easier.  You may use the following functions to aid you in
+extracting instructions from the diff file if you wish:
+</p>
+<pre>	bool getInt(istream&amp; inf, int&amp; n)
+	{
+	    char ch;
+	    if (!inf.get(ch)  ||  !isascii(ch)  ||  !isdigit(ch))
+	        return false;
+	    inf.unget();
+	    inf &gt;&gt; n;
+	    return true;
+	}
+
+	bool getCommand(istream&amp; inf, char&amp; cmd, int&amp; length, int&amp; offset)
+	{
+	    if (!inf.get(cmd))
+	    {
+	        cmd = 'x';  // signals end of file
+	        return true;
+	    }
+	    char ch;
+	    switch (cmd)
+	    {
+	      case 'A':
+	        return getInt(inf, length) &amp;&amp; inf.get(ch) &amp;&amp; ch == ':';
+	      case 'C':
+	        return getInt(inf, length) &amp;&amp; inf.get(ch) &amp;&amp; ch == ',' &amp;&amp; getInt(inf, offset);
+	      case '\r':
+	      case '\n':
+	        return true;
+	    }
+	    return false;
+	}
+</pre>
+<h3>Turn it in</h3>
+<p>
+What you will turn in for this assignment is a zip file containing these
+files and nothing more:
+</p>
+<ol>
+<li>
+<p>
+One or more source files that contain the code for the two required functions
+and any supporting types and functions you use to implement them.  Your
+source code should have helpful comments that explain any non-obvious
+code.  You may include a main routine if you wish; if you do, we will rename
+it to something harmless, never call it, and instead use our own main
+routine.
+</p>
+</li></ol>
+<p>
+How nice!  You don't have to turn in a report file this time.
+</p>
+<h3>Grading</h3>
+<p>
+Your <code>applyDiff</code> function is worth 22% of the points for this
+project.
+</p><p>
+The correctness of your <code>createDiff</code> function is worth 54% of
+the points, subject to these caveats:  You will receive no points for any
+test case that produces a diff file that is not at least 5% smaller than
+the file that is the second argument to <code>createDiff</code>, and you
+will lose half of the correctness points you earn if you use any library
+containers other than those we allowed.  (In other words, do not use
+library containers that are implemented using trees or hash tables, such as
+<code>set</code>, <code>map</code>, <code>unordered_set</code>,
+<code>unordered_map</code>, etc.)
+</p><p>
+The size of the diff files that <code>createDiff</code> produces is worth
+24% of the points.  The smaller your diff files, the more points you'll earn.
+For each test case for which you produce a correct diff file, of the
+diff file size points possible for that case:
+</p>
+<ul>
+<li>
+You earn 25% of those points if the diff file you produce is at least
+5% smaller that the file that is the second argument to
+<code>createDiff</code>.
+</li><li>
+You earn 50% of those points if the diff file you produce is between 5% and
+20% larger than the diff file that <em>our</em> solution produces.
+</li><li>
+You earn 75% of those points if the diff file you produce is between 0% and
+5% larger than the diff file that <em>our</em> solution produces.
+</li><li>
+You earn 100% of those points if the diff file you produce is smaller than
+the diff file that <em>our</em> solution produces.
+</li>
+</ul>
+
+
+<iframe frameborder="0" scrolling="no" style="background-color: transparent; border: 0px; display: none;" src="./CS 32 Project 4, Spring 2019_files/saved_resource.html"></iframe><div id="GOOGLE_INPUT_CHEXT_FLAG" input="" input_stat="{&quot;tlang&quot;:true,&quot;tsbc&quot;:true,&quot;pun&quot;:true,&quot;mk&quot;:true,&quot;ss&quot;:true}" style="display: none;"></div></body></html>

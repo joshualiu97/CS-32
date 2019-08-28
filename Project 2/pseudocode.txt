@@ -1,0 +1,225 @@
+Sequence::Sequence()
+
+set sequence lenth to 0
+make head point to dummy
+make the dummy a circular list my making the next and previous pointer point to itself
+
+
+
+Sequence::~Sequence()
+
+create pointer p, point to a node, make it point at the last item of the list
+loop through list starting from the back, stopping when we get back to dummy node
+	point p at previous node
+	delete the next node
+delete last node(dummy node)
+
+
+
+Sequence::Sequence(const Sequence& other)
+
+set head to dummy node
+make dummy node a circular list by changing next and previous pointers
+loop through body the amount of Sequence's size
+	create new ItemType
+	set this value to the value of a node in other's Sequence
+	set own Sequence's corresponding node to this value
+
+
+
+Sequence & Sequence::operator=(const Sequence & other)
+
+if current object isn's other object
+	create temp Sequence
+	swap other with current Sequence
+return current Sequence
+
+
+
+bool Sequence::empty() const
+
+if size of Sequence is zero
+	return true
+else return false
+
+
+
+int Sequence::size() const
+
+return Sequence size
+
+
+
+int Sequence::insert(int pos, const ItemType& value)
+
+if position given fits into the Sequence(between 0 and size, inclusive)
+	create a pointer that points to head(dummy node)
+	move pointer to given position
+	create a new Node and set its data
+	change the pointers to fit new Node into Sequence
+	increment size
+	return position
+else return -1
+
+
+
+int Sequence::insert(const ItemType& value)
+
+create pointer pointing to head(dummy node)
+move to first position(if none, then point to dummy node)
+look through Nodes starting from position 0 and compare their values to given value
+	if given value is less than or equal to Node value
+		insert at this position and return position
+	else check next Node
+if none are larger, insert at end and return position
+
+
+
+bool Sequence::erase(int pos)
+
+if size is zero, return false
+if position lies within Sequence
+	create pointer pointing to head
+	move pointer to this position
+	change the pointers to remove the Node
+	delete the Node
+	decrease size by 1
+	return true
+else return false
+
+
+
+int Sequence::remove(const ItemType& value)
+
+create pointer p pointing to the first element
+create a counter to count how many items are deleted
+loop thorugh list using its size
+	if value of a Node is equal to value given
+		create a temporary pointer to p's previous Node
+		erase Node that p points to
+		increment counter
+		set p to temp
+	else check next Node
+return counter
+
+
+
+bool Sequence::get(int pos, ItemType& value) const
+
+if position is valid in Sequence
+	create pointer p pointing to first element
+	make p point to given position
+	get value and put it into function's value
+	return true
+else return false
+
+
+
+bool Sequence::set(int pos, const ItemType& value)
+
+if position is valid in Sequence
+	create pointer p pointing to first element
+	move p to position given
+	set the value of p's Node to value given
+	return true
+else return false
+
+
+
+int Sequence::find(const ItemType& value) const
+
+create pointer point pointing to first position
+loop through list
+	if Node data is equal to given value
+		return that position
+	else check next Node
+else return -1
+
+
+
+void Sequence::swap(Sequence& other)
+
+(copy and swap)
+create temporary pointer pointing to other dummy
+create temporary pointer pointing to other head
+create temporary size value of other Sequence's size
+set other dummy to current dummy
+set other head pointer to current head pointer
+set other size to current size
+set current dummy to temporary dummy
+set current head to temporary head
+set current size to temporary size
+
+
+
+void Sequence::dump() const
+
+print Nodes with a pointer p cycling through the list
+
+
+
+int subsequence(const Sequence& seq1, const Sequence& seq2)
+
+if sequence 1 less than sequence 2
+	return -1
+create sequence 1 counter get sequence 1 size
+loop using sequence 1's size
+	create two ItemType variables
+	get sequence 1's value at sequence 1 counter's position and 2's values from position 0
+	compare values and if they are equal
+		check the following Nodes to see if they equal as well
+			if they are, return the counter of sequence, which is the position of the equal substrings
+	else increment sequence 1 and check next Node
+else, this means nothing matches so return -1
+
+
+
+void interleave(const Sequence& seq1, const Sequence& seq2, Sequence& result)
+
+create a Sequence to store the results
+if both sequences empty
+	set result to empty string and return
+sequence 1 or 2 are emtpy
+	set result to correct sequence and return
+create integer variables for the lengths and find the larger length
+create a counter for inserting and positions of sequence 1 and 2, starting at 0
+loop through max length
+	if sequence 1 position is less than its length
+		get the value at the position
+		put it in a temporary result at position of the insert counter
+		incremenet sequence 1 counter and insert counter
+	if sequence 2 position is less than its length
+		get the value at the position
+		put it in a temporary result at position of the insert counter
+		incremenet sequence 2 counter and insert counter
+set results equal to temporary results
+return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
